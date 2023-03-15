@@ -71,6 +71,17 @@ int main()
 
     std::string ip_addr;
     int port_str;
+	
+	// Use these hardcoded values and change as needed.
+	// Port 2222 is used by some SSH servers and remote admin tools.
+	// Other options are 4242 and 8000
+	
+	/*
+	ip_addr = 0.0.0.0;
+	port_str = 2222;
+	*/
+	
+	// Use for entering custom IP and port. Otherwise use code above.
     std::cout << "Enter IP address: "; std::getline(std::cin, ip_addr);
     std::cout << "Enter port number: "; std::cin >> port_str;
 
