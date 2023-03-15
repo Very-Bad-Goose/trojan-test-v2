@@ -1,2 +1,2 @@
 # trojan-test-v2
-The last project changed to a client side ssl connection. recreated to maintain shell functionality
+A reverse shell with SSL encryption, adapted from v1.
